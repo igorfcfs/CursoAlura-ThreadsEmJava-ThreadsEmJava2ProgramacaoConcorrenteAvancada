@@ -11,7 +11,6 @@ public class ServidorTarefas {
 		System.out.println("-----Inicializando Servidor-----");
 		ServerSocket servidor = new ServerSocket(12345); //ponto de comunicacao
 		
-//		ExecutorService threadPool = Executors.newFixedThreadPool(2);
 		ExecutorService threadPool = Executors.newCachedThreadPool();//cresce/diminiu dinamicamente suas threads
 		
 		while(true) {
@@ -19,8 +18,6 @@ public class ServidorTarefas {
 			System.out.println("Aceitando novo cliente " + socket.getPort());
 			
 			DistribuirTarefas distribuirTarefas = new DistribuirTarefas(socket);
-//			Thread threadCliente = new Thread(distribuirTarefas);
-//			threadCliente.start();
 			threadPool.execute(distribuirTarefas);
 		}
 	}
