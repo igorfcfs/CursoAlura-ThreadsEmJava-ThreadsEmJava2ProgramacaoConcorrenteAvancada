@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -13,15 +15,26 @@ public class ServidorTarefas {
 	private ServerSocket servidor;
 //	private volatile boolean estaRodando;
 	private AtomicBoolean estaRodando; //alternativa para volatile, abstrai essa parte de volatile, pq as vezes o desenvolvedor nao entende corretamente
+	private BlockingQueue<String> filaComandos;
 	
 	public ServidorTarefas() throws IOException {
 		System.out.println("-----Inicializando Servidor-----");
-		this.servidor = new ServerSocket(12345); //ponto de comunicacao
-		this.threadPool = Executors.newFixedThreadPool(4, new FabricaDeThreads()); //newCachedThreadPool();//cresce/diminiu dinamicamente suas threads
-//		this.estaRodando = true;
+		this.servidor = new ServerSocket(12345);
+		this.threadPool = Executors.newCachedThreadPool(new FabricaDeThreads());
 		this.estaRodando = new AtomicBoolean(true);
+		this.filaComandos = new ArrayBlockingQueue<>(2);
+		iniciarConsumidores();
 	}
 	
+	private void iniciarConsumidores() {
+		
+		int qtdeConsumidores = 2;
+		for(int i = 0; i < qtdeConsumidores; i++) {
+			TarefaConsumir tarefa = new TarefaConsumir(filaComandos);
+			this.threadPool.execute(tarefa);
+		}
+	}
+
 	public static void main(String[] args) throws IOException, InterruptedException {		
 		ServidorTarefas servidor = new ServidorTarefas();
 		servidor.rodar();
@@ -35,7 +48,7 @@ public class ServidorTarefas {
 				Socket socket = servidor.accept();
 				System.out.println("Aceitando novo cliente " + socket.getPort());
 				
-				DistribuirTarefas distribuirTarefas = new DistribuirTarefas(this.threadPool, socket, this/*passar como parametro este servidor que esta rodando*/);
+				DistribuirTarefas distribuirTarefas = new DistribuirTarefas(this.threadPool, this.filaComandos, socket, this/*passar como parametro este servidor que esta rodando*/);
 				threadPool.execute(distribuirTarefas);
 			}
 		} catch (SocketException e) {
